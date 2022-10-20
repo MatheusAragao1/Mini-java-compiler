@@ -1,37 +1,95 @@
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class Scanner {
-  private int linha = 1;
-  private int coluna = 0;
+  private int row = 1;
+  private int column = 0;
   private List<Token> tokens;
 
-  private static final List<String> IGNORE_LIST = Arrays.asList(" ", "\n", "\r", "\t", "@");
-  private static final List<String> SPECIAL_TOKENS = Arrays.asList(".", ":", ",", ";", "(", ")", "=", "!", "{", "}",
-      "<", "&", "[", "]", "*");
-  private static final String AND_SYMBOL = "&";
-  private static final String UNDER_LINE_SYMBOL = "_";
-  private static final String BAR_SYMBOL = "/";
-  private static final String EQUALS_SYMBOL = "=";
-  private static final String NEGATE_SYMBOL = "!";
-  private static final String ASTERISK_SYMBOL = "*";
-  private static final String NEW_LINE = "\n";
-
-  public Boolean isIgnorableCharacter(char character)
+  private Boolean isIgnorableCharacter(char character)
   {
-    return IGNORE_LIST.contains(String.valueOf(character));
+    return ScannerConfig.IGNORE_LIST.contains(String.valueOf(character));
   }
 
-  public List<Token>analise(String codeFileName) throws IOException {
+  private Boolean isLineBreakAndHaveAnyToken(char character)
+  {
+    return character == '\n' && (this.tokens != null && this.tokens.size() > 0);
+  }
+
+  private Boolean canBeConcat(char character)
+  {
+    return Character.isLetter(character)  || "_".equals(String.valueOf(character))  || Character.isDigit(character);
+  }
+
+  private Boolean isSimpleMathType(char character)
+  {
+    return Type.MAIS.getId().equals(String.valueOf(character)) || Type.MENOS.getId().equals(String.valueOf(character)) || Type.MULTIPLICACAO.getId().equals(String.valueOf(character));
+  }
+
+  private Boolean isSpecialToken(char character)
+  {
+    return ScannerConfig.SPECIAL_TOKENS.contains(String.valueOf(character));
+  }
+
+  private Boolean isBar(char character)
+  {
+    return "/".equals(String.valueOf(character));
+  }
+
+  private Boolean isNotEndOfSystemType(char character)
+  {
+    return character != ' ' && character != '(';
+  }
+
+  private Boolean isNumberContinuation(char character)
+  {
+    return Character.isDigit(character) || Type.PONTO.getId().equals(String.valueOf(character));
+  }
+  
+  private Boolean isComposeChar(char character) 
+  {
+    String id = String.valueOf(character);
+    return "&".equals(id) || "=".equals(id) || "!".equals(id);
+  }
+
+  private Boolean isComposeType(Type type) 
+  {
+    return Type.AND.equals(type) || Type.IGUALDADE.equals(type) || Type.DIFERENCA.equals(type);
+  }
+
+  private Boolean isNextLine(char character)
+  {
+    return "\n".equals(String.valueOf(character));
+  }
+
+  private Boolean hasNestedDots(String character, PushbackReader pushbackReader) throws IOException 
+  {
+    Boolean result = false;
+    if (Type.PONTO.getId().equals(character)) 
+    {
+      char nextCharacter = getCharacter(pushbackReader);
+      if (Type.PONTO.getId().equals(String.valueOf(nextCharacter))) {
+        result = true;
+      }
+      else
+      {
+        previousCharacter(pushbackReader, nextCharacter);
+      }
+    }
+    return result;
+  }
+
+  public List<Token>analise(String codeFileName) throws IOException 
+  {
     PushbackReader pushbackReader = new PushbackReader(new BufferedReader(new InputStreamReader(new FileInputStream(codeFileName), "US-ASCII")));
+    
     this.tokens = new ArrayList<>();
 
     char character = '.';
     while(character != '@')
     {
-      character = readCharacter(pushbackReader);
+      character = getCharacter(pushbackReader);
       if (isIgnorableCharacter(character)) {
         continue;
       }
@@ -49,189 +107,175 @@ public class Scanner {
     return tokens;
   }
 
-  private char readCharacter(PushbackReader pushbackReader) throws IOException {
+  private char getCharacter(PushbackReader pushbackReader) throws IOException {
     int data = pushbackReader.read();
     if (data != -1) {
       char character = (char) data;    
-      if (character == '\n' && (tokens != null && tokens.size() > 0)) {
-        linha++;
-        coluna = 0;
+      if (isLineBreakAndHaveAnyToken(character)) {
+        row++;
+        column = 0;
       } else {
-         coluna++;
+         column++;
       }
       return character;
-    } else {
-      return '@';
     }
+    return '@';
   }
 
-  private void unreadChar(PushbackReader pushbackReader, char character) throws IOException {
+  private void previousCharacter(PushbackReader pushbackReader, char character) throws IOException {
     pushbackReader.unread(character);
     if (character == '\n') {
-      linha--;
+      row--;
     } else {
-      coluna--;
+      column--;
     }
   }
 
   private Token getToken(char character, PushbackReader pushbackReader) throws IOException {
     if (Character.isLetter(character)) {
-      int col = coluna;
-      return handleIdentifierAndReservedWord(character, pushbackReader, col);
+      return handleIdOrReservedWord(character, pushbackReader, this.column);
     }
 
-    if (Type.MAIS.getId().equals(String.valueOf(character))
-        || Type.MENOS.getId().equals(String.valueOf(character))) {
-      int col = coluna;
-      return handlePlusAndMinusOperation(character, pushbackReader, col);
+    if (isSimpleMathType(character)) 
+    {
+      return handleSimpleMathOperation(character, pushbackReader, this.column);
     }
 
     if (Character.isDigit(character)) {
-      int col = coluna;
-      return handleDigit(character, pushbackReader, col);
+      return handleNumber(character, pushbackReader, this.column);
     }
 
-    if (SPECIAL_TOKENS.contains(String.valueOf(character))) {
-      int col = coluna;
-      return handleSpecialChars(character, pushbackReader, col);
+    if (isComposeChar(character)) {
+      return handleComposeChars(character, pushbackReader, this.column);
     }
 
-    if (BAR_SYMBOL.equals(String.valueOf(character))) {
-      int col = coluna;
-      return handleBar(character, pushbackReader, col);
+    if (isSpecialToken(character)) {
+      return handleSpecialChars(character, pushbackReader, this.column);
     }
 
-    return new Token(Type.ERRO, String.valueOf(character), linha, coluna);
+    if (isBar(character)) {
+      return handleBar(character, pushbackReader, this.column);
+    }
+
+    return new Token(Type.ERRO, String.valueOf(character), this.row, this.column);
   }
 
-  private Boolean canBeConcat(char character)
+  private Token handleIdOrReservedWord(char character, PushbackReader pushbackReader, int coluna) throws IOException 
   {
-    return Character.isLetter(character)
-        || UNDER_LINE_SYMBOL.equals(String.valueOf(character))
-        || Character.isDigit(character);
-  }
-
-  private Token handleIdentifierAndReservedWord(char character, PushbackReader pushbackReader, int coluna)
-      throws IOException {
     String id = String.valueOf(character);
-    char nextCharacter = readCharacter(pushbackReader);
+    char nextCharacter = getCharacter(pushbackReader);
 
-    while (canBeConcat(nextCharacter)) {
+    while (canBeConcat(nextCharacter)) 
+    {
       id = id.concat(String.valueOf(nextCharacter));
-      nextCharacter = readCharacter(pushbackReader);
+      nextCharacter = getCharacter(pushbackReader);
     }
-    unreadChar(pushbackReader, nextCharacter);
+
+    previousCharacter(pushbackReader, nextCharacter);
+
     Type type = Type.getTypeById(id);
-
-    if (Type.SYSTEM.equals(type)) {
-      nextCharacter = readCharacter(pushbackReader);
-      while (nextCharacter != ' ' && nextCharacter != '(') {
+    if (Type.SYSTEM.equals(type))
+    {
+      nextCharacter = getCharacter(pushbackReader);
+      while (isNotEndOfSystemType(nextCharacter)) 
+      {
         id = id.concat(String.valueOf(nextCharacter));
-        nextCharacter = readCharacter(pushbackReader);
+        nextCharacter = getCharacter(pushbackReader);
       }
-      unreadChar(pushbackReader, nextCharacter);
-      Type type2 = Type.getTypeById(id);
-      return new Token(type2, id, linha, coluna);
+      previousCharacter(pushbackReader, nextCharacter);
+      Type printStatement = Type.getTypeById(id);
+      return new Token(printStatement, id, this.row, coluna);
     }
 
-    return new Token(type, id, linha, coluna);
+    return new Token(type, id, this.row, coluna);
   }
 
-  private Token handlePlusAndMinusOperation(char character, PushbackReader pushbackReader, int coluna)
-      throws IOException {
-    String operator = String.valueOf(character);
-    char nextCharacter = readCharacter(pushbackReader);
-
-    if (Character.isSpaceChar(nextCharacter)) {
-      Type type = Type.getTypeById(operator);
-      return new Token(type, operator, linha, coluna);
-    }
-
-    Token token = handleDigit(nextCharacter, pushbackReader, coluna);
-    token.setPalavra(operator.concat(token.getPalavra()));
-    return token;
-
+  private Token handleSimpleMathOperation(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  {
+    String opp = String.valueOf(character);
+    Type type = Type.getTypeById(opp);
+    return new Token(type, opp, this.row, coluna);
   }
 
-  private Token handleDigit(char character, PushbackReader pushbackReader, int coluna) throws IOException {
-    String num = String.valueOf(character);
-    char nextCharacter = readCharacter(pushbackReader);
-    while (Character.isDigit(nextCharacter) || Type.PONTO.getId().equals(String.valueOf(nextCharacter))) {
-      if (isInvalidFloatNumber(String.valueOf(nextCharacter), pushbackReader)) {
-        return new Token(Type.ERRO, String.valueOf(nextCharacter), linha, coluna);
+  private Token handleNumber(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  {
+    String number = String.valueOf(character);
+    char nextCharacter = getCharacter(pushbackReader);
+
+    while (isNumberContinuation(nextCharacter)) 
+    {
+      if (hasNestedDots(String.valueOf(nextCharacter), pushbackReader)) 
+      {
+        return new Token(Type.ERRO, String.valueOf(nextCharacter), this.row, coluna);
       }
-      num = num.concat(String.valueOf(nextCharacter));
-      nextCharacter = readCharacter(pushbackReader);
+      number = number.concat(String.valueOf(nextCharacter));
+      nextCharacter = getCharacter(pushbackReader);
     }
-    unreadChar(pushbackReader, nextCharacter);
-    return new Token(Type.NUMERO, num, linha, coluna);
+    previousCharacter(pushbackReader, nextCharacter);
+    return new Token(Type.NUMERO, number, this.row, coluna);
   }
 
-  private Token handleSpecialChars(char character, PushbackReader pushbackReader, int coluna) throws IOException {
+  private Token handleComposeChars(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  {
     String specialCharacter = String.valueOf(character);
+    char nextCharacter = getCharacter(pushbackReader);
+    String concat = specialCharacter.concat(String.valueOf(nextCharacter));
+    Type typeById = Type.getTypeById(concat);
 
-    if (isComposeChar(specialCharacter)) {
-      char nextCharacter = readCharacter(pushbackReader);
-      String ch = specialCharacter.concat(String.valueOf(nextCharacter));
-      Type typeById = Type.getTypeById(ch);
-
-      if (isComposeType(typeById)) {
-        return new Token(typeById, ch, linha, coluna);
-      }
-      unreadChar(pushbackReader, nextCharacter);
+    if (isComposeType(typeById)) 
+    {
+      return new Token(typeById, concat, this.row, coluna);
     }
+    previousCharacter(pushbackReader, nextCharacter);
 
     Type type = Type.getTypeById(specialCharacter);
-    return new Token(type, specialCharacter, linha, coluna);
+    return new Token(type, specialCharacter, this.row, coluna);
   }
 
-  private Boolean isComposeChar(String character) {
-    return AND_SYMBOL.equals(character) || EQUALS_SYMBOL.equals(character) || NEGATE_SYMBOL.equals(character);
+  private Token handleSpecialChars(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  {
+    String specialCharacter = String.valueOf(character);
+    Type type = Type.getTypeById(specialCharacter);
+    return new Token(type, specialCharacter, this.row, coluna);
   }
 
-  private Boolean isComposeType(Type type) {
-    return Type.AND.equals(type) || Type.IGUALDADE.equals(type) || Type.DIFERENCA.equals(type);
-  }
+  private Token handleBar(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  {
+    char nextCharacter = getCharacter(pushbackReader);
 
-  private Token handleBar(char character, PushbackReader pushbackReader, int coluna) throws IOException {
-    char nextCharacter = readCharacter(pushbackReader);
-
-    if (BAR_SYMBOL.equals(String.valueOf(nextCharacter))) {
-      nextCharacter = readCharacter(pushbackReader);
-      while (!NEW_LINE.equals(String.valueOf(nextCharacter))) {
-        nextCharacter = readCharacter(pushbackReader);
+    if (isBar(nextCharacter)) 
+    {
+      nextCharacter = getCharacter(pushbackReader);
+      while (!isNextLine(nextCharacter)) 
+      {
+        nextCharacter = getCharacter(pushbackReader);
       }
       return null;
 
-    } else if (ASTERISK_SYMBOL.equals(String.valueOf(nextCharacter))) {
-      while (true) {
-        nextCharacter = readCharacter(pushbackReader);
+    } 
+    else if ("*".equals(String.valueOf(nextCharacter))) 
+    {
+      while (true) 
+      {
+        nextCharacter = getCharacter(pushbackReader);
 
-        if (ASTERISK_SYMBOL.equals(String.valueOf(nextCharacter))) {
-          nextCharacter = readCharacter(pushbackReader);
-          if (BAR_SYMBOL.equals(String.valueOf(nextCharacter))) {
+        if ("*".equals(String.valueOf(nextCharacter))) 
+        {
+          nextCharacter = getCharacter(pushbackReader);
+          if ("/".equals(String.valueOf(nextCharacter))) 
+          {
             break;
           }
         }
       }
       return null;
-    } else {
-      unreadChar(pushbackReader, nextCharacter);
+    } 
+    else 
+    {
+      previousCharacter(pushbackReader, nextCharacter);
       String id = String.valueOf(character);
       Type type = Type.getTypeById(id);
-      return new Token(type, id, linha, coluna);
+      return new Token(type, id, this.row, coluna);
     }
-  }
-
-  private Boolean isInvalidFloatNumber(String character, PushbackReader pushbackReader) throws IOException {
-    if (Type.PONTO.getId().equals(character)) {
-      char nextCharacter = readCharacter(pushbackReader);
-      if (Type.PONTO.getId().equals(String.valueOf(nextCharacter))) {
-        return true;
-      }
-      unreadChar(pushbackReader, nextCharacter);
-      return false;
-    }
-    return false;
   }
 }
