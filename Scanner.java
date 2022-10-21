@@ -6,7 +6,7 @@ import java.util.Arrays;
 interface IScannerConfig
 {
   public static List<String> IGNORE_LIST = Arrays.asList(" ", "\n", "\r", "\t", "@");
-  public static List<String> SPECIAL_TOKENS = Arrays.asList(".", ":", ",", ";", "(", ")", "{", "}","<",">", "[", "]");
+  public static List<String> ANOTHER_TOKENS = Arrays.asList(".", ":", ",", ";", "(", ")", "{", "}","<",">", "[", "]","+","-","*");
 } 
 
 public class Scanner implements IScannerConfig
@@ -30,14 +30,9 @@ public class Scanner implements IScannerConfig
     return Character.isLetter(character)  || "_".equals(String.valueOf(character))  || Character.isDigit(character);
   }
 
-  private Boolean isSimpleMathType(char character)
+  private Boolean isAnotherToken(char character)
   {
-    return Type.MAIS.getId().equals(String.valueOf(character)) || Type.MENOS.getId().equals(String.valueOf(character)) || Type.MULTIPLICACAO.getId().equals(String.valueOf(character));
-  }
-
-  private Boolean isSpecialToken(char character)
-  {
-    return SPECIAL_TOKENS.contains(String.valueOf(character));
+    return ANOTHER_TOKENS.contains(String.valueOf(character));
   }
 
   private Boolean isBar(char character)
@@ -145,11 +140,6 @@ public class Scanner implements IScannerConfig
       return handleIdOrReservedWord(character, pushbackReader, this.column);
     }
 
-    if (isSimpleMathType(character)) 
-    {
-      return handleSimpleMathOperation(character, pushbackReader, this.column);
-    }
-
     if (Character.isDigit(character)) 
     {
       return handleNumber(character, pushbackReader, this.column);
@@ -160,9 +150,9 @@ public class Scanner implements IScannerConfig
       return handleComposeChars(character, pushbackReader, this.column);
     }
 
-    if (isSpecialToken(character)) 
+    if (isAnotherToken(character)) 
     {
-      return handleSpecialChars(character, pushbackReader, this.column);
+      return handleAnotherChars(character, pushbackReader, this.column);
     }
 
     if (isBar(character)) 
@@ -203,13 +193,6 @@ public class Scanner implements IScannerConfig
     return new Token(type, id, this.row, coluna);
   }
 
-  private Token handleSimpleMathOperation(char character, PushbackReader pushbackReader, int coluna) throws IOException 
-  {
-    String opp = String.valueOf(character);
-    Type type = Type.getTypeById(opp);
-    return new Token(type, opp, this.row, coluna);
-  }
-
   private Token handleNumber(char character, PushbackReader pushbackReader, int coluna) throws IOException 
   {
     String number = String.valueOf(character);
@@ -230,9 +213,9 @@ public class Scanner implements IScannerConfig
 
   private Token handleComposeChars(char character, PushbackReader pushbackReader, int coluna) throws IOException 
   {
-    String specialCharacter = String.valueOf(character);
+    String compCharacter = String.valueOf(character);
     char nextCharacter = getCharacter(pushbackReader);
-    String concat = specialCharacter.concat(String.valueOf(nextCharacter));
+    String concat = compCharacter.concat(String.valueOf(nextCharacter));
     Type typeById = Type.getTypeById(concat);
 
     if (isComposeType(typeById)) 
@@ -241,15 +224,15 @@ public class Scanner implements IScannerConfig
     }
     previousCharacter(pushbackReader, nextCharacter);
 
-    Type type = Type.getTypeById(specialCharacter);
-    return new Token(type, specialCharacter, this.row, coluna);
+    Type type = Type.getTypeById(compCharacter);
+    return new Token(type, compCharacter, this.row, coluna);
   }
 
-  private Token handleSpecialChars(char character, PushbackReader pushbackReader, int coluna) throws IOException 
+  private Token handleAnotherChars(char character, PushbackReader pushbackReader, int coluna) throws IOException 
   {
-    String specialCharacter = String.valueOf(character);
-    Type type = Type.getTypeById(specialCharacter);
-    return new Token(type, specialCharacter, this.row, coluna);
+    String anotherCharacter = String.valueOf(character);
+    Type type = Type.getTypeById(anotherCharacter);
+    return new Token(type, anotherCharacter, this.row, coluna);
   }
 
   private Token handleBar(char character, PushbackReader pushbackReader, int coluna) throws IOException 
