@@ -1,16 +1,15 @@
 import java.util.List;
-
 public class Main 
-{  
+{ 
   public static void main(String[] args) {
     try 
     {
       String fileName = "test.java";
-      Scanner analisadorLexico = new Scanner();
-      List<Token> analiseMiniJava = analisadorLexico.analise(fileName);
-      for (int i = 0; i < analiseMiniJava.size(); i++)
+      Scanner scan = new Scanner();
+      List<Token> tokenList = scan.analize(fileName);
+      for (int i = 0; i < tokenList.size(); i++)
       {
-        System.out.println(analiseMiniJava.get(i));        
+        System.out.println(tokenList.get(i));        
       }
     } 
     catch (Exception e)

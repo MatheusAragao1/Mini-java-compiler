@@ -1,15 +1,23 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
-public class Scanner {
+interface IScannerConfig
+{
+  public static List<String> IGNORE_LIST = Arrays.asList(" ", "\n", "\r", "\t", "@");
+  public static List<String> SPECIAL_TOKENS = Arrays.asList(".", ":", ",", ";", "(", ")", "{", "}","<",">", "[", "]");
+} 
+
+public class Scanner implements IScannerConfig
+{
   private int row = 1;
   private int column = 0;
   private List<Token> tokens;
 
   private Boolean isIgnorableCharacter(char character)
   {
-    return ScannerConfig.IGNORE_LIST.contains(String.valueOf(character));
+    return IGNORE_LIST.contains(String.valueOf(character));
   }
 
   private Boolean isLineBreakAndHaveAnyToken(char character)
@@ -29,7 +37,7 @@ public class Scanner {
 
   private Boolean isSpecialToken(char character)
   {
-    return ScannerConfig.SPECIAL_TOKENS.contains(String.valueOf(character));
+    return SPECIAL_TOKENS.contains(String.valueOf(character));
   }
 
   private Boolean isBar(char character)
@@ -55,7 +63,7 @@ public class Scanner {
 
   private Boolean isComposeType(Type type) 
   {
-    return Type.AND.equals(type) || Type.IGUALDADE.equals(type) || Type.DIFERENCA.equals(type);
+    return Type.AND.equals(type) || Type.IGUAL.equals(type) || Type.DIFERENTE.equals(type);
   }
 
   private Boolean isNextLine(char character)
@@ -80,7 +88,7 @@ public class Scanner {
     return result;
   }
 
-  public List<Token>analise(String codeFileName) throws IOException 
+  public List<Token> analize(String codeFileName) throws IOException 
   {
     PushbackReader pushbackReader = new PushbackReader(new BufferedReader(new InputStreamReader(new FileInputStream(codeFileName), "US-ASCII")));
     
@@ -132,7 +140,8 @@ public class Scanner {
   }
 
   private Token getToken(char character, PushbackReader pushbackReader) throws IOException {
-    if (Character.isLetter(character)) {
+    if (Character.isLetter(character)) 
+    {
       return handleIdOrReservedWord(character, pushbackReader, this.column);
     }
 
@@ -141,19 +150,23 @@ public class Scanner {
       return handleSimpleMathOperation(character, pushbackReader, this.column);
     }
 
-    if (Character.isDigit(character)) {
+    if (Character.isDigit(character)) 
+    {
       return handleNumber(character, pushbackReader, this.column);
     }
 
-    if (isComposeChar(character)) {
+    if (isComposeChar(character)) 
+    {
       return handleComposeChars(character, pushbackReader, this.column);
     }
 
-    if (isSpecialToken(character)) {
+    if (isSpecialToken(character)) 
+    {
       return handleSpecialChars(character, pushbackReader, this.column);
     }
 
-    if (isBar(character)) {
+    if (isBar(character)) 
+    {
       return handleBar(character, pushbackReader, this.column);
     }
 
