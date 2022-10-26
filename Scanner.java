@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 interface IScannerConfig
 {
-  public static List<String> IGNORE_LIST = Arrays.asList(" ", "\n", "\r", "\t", "@");
+  public static List<String> IGNORE_LIST = Arrays.asList(" ", "\n", "\r", "\t", "$");
   public static List<String> ANOTHER_TOKENS = Arrays.asList(".", ":", ",", ";", "(", ")", "{", "}","<",">", "[", "]","+","-","*");
 } 
 
@@ -90,7 +90,7 @@ public class Scanner implements IScannerConfig
     this.tokens = new ArrayList<>();
 
     char character = '.';
-    while(character != '@')
+    while(character != '$')
     {
       character = getCharacter(pushbackReader);
       if (isIgnorableCharacter(character)) {
@@ -122,7 +122,7 @@ public class Scanner implements IScannerConfig
       }
       return character;
     }
-    return '@';
+    return '$';
   }
 
   private void previousCharacter(PushbackReader pushbackReader, char character) throws IOException {
@@ -235,6 +235,22 @@ public class Scanner implements IScannerConfig
     return new Token(type, anotherCharacter, this.row, coluna);
   }
 
+  private void goUntilFinishComment(char nextCharacter, PushbackReader pushbackReader) throws IOException
+  {
+    while (true) 
+    {
+       nextCharacter = getCharacter(pushbackReader);
+       if ("*".equals(String.valueOf(nextCharacter))) 
+       {
+         nextCharacter = getCharacter(pushbackReader);
+         if ("/".equals(String.valueOf(nextCharacter))) 
+         {
+           break;
+         }
+       }
+    }
+  }
+
   private Token handleBar(char character, PushbackReader pushbackReader, int coluna) throws IOException 
   {
     char nextCharacter = getCharacter(pushbackReader);
@@ -251,19 +267,7 @@ public class Scanner implements IScannerConfig
     } 
     else if ("*".equals(String.valueOf(nextCharacter))) 
     {
-      while (true) 
-      {
-        nextCharacter = getCharacter(pushbackReader);
-
-        if ("*".equals(String.valueOf(nextCharacter))) 
-        {
-          nextCharacter = getCharacter(pushbackReader);
-          if ("/".equals(String.valueOf(nextCharacter))) 
-          {
-            break;
-          }
-        }
-      }
+      goUntilFinishComment(nextCharacter, pushbackReader);
       return null;
     } 
     else 

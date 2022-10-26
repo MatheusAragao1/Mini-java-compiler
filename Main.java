@@ -9,7 +9,8 @@ public class Main
       List<Token> tokenList = scan.analize(fileName);
       for (int i = 0; i < tokenList.size(); i++)
       {
-        System.out.println(tokenList.get(i));        
+        Token token = tokenList.get(i);
+        System.out.println(String.format("linha: %s, Tipo: %s, Palavra: %s", token.linha, token.type, token.palavra));        
       }
     } 
     catch (Exception e)

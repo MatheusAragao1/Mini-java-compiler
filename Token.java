@@ -64,10 +64,4 @@ public class Token
     {
         this.tipagem = tipagem;
     }
-
-    @Override
-    public String toString() 
-    {
-        return String.format("linha: %s, Tipo: %s, Palavra: %s", linha, type, palavra);
-    }
 }
