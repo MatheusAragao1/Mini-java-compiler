@@ -12,6 +12,9 @@ public class Main
         Token token = tokenList.get(i);
         System.out.println(String.format("linha: %s, Tipo: %s, Palavra: %s", token.linha, token.type, token.palavra));        
       }
+      Parser parse = new Parser();
+      Boolean isOk = parse.analize(tokenList);
+      System.out.println("Analise Sintatica: " + isOk);
     } 
     catch (Exception e)
     {
