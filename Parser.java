@@ -1,4 +1,6 @@
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Parser
 {
@@ -11,6 +13,8 @@ public class Parser
         System.out.println(message + "\nLinha: " + actualToken.getLinha() + " Coluna: " + actualToken.getColuna());
         return false;
     }
+
+    public static List<Type> mainTypesToVerify = Arrays.asList(Type.PUBLIC, Type.STATIC, Type.VOID, Type.MAIN, Type.ABRE_PARENTESIS, Type.STRING, Type.ABRE_COLCHETES, Type.FECHA_COLCHETES, Type.IDENTIFICADOR, Type.FECHA_PARENTESIS, Type.ABRE_CHAVES );
     
     public Boolean analize(List<Token> tokenList) 
     {
@@ -20,14 +24,20 @@ public class Parser
             setNextToken(tokenList);
             if(Type.IDENTIFICADOR.equals(actualToken.getType())) 
             {
-                putIdentifierInSymbolTable("nome_classe");
+                putIdentifierInSymbolTable("classe");
                 setNextToken(tokenList);
                 if (Type.ABRE_CHAVES.equals(actualToken.getType()))
                 {
                     setNextToken(tokenList);
-                    // adicionar if analise ok return true
-                    newError("Restante do algoritmo ainda não implementado");
-                    return false;
+                    if (deepMainAnalize(tokenList)) 
+                    {
+                        if (Type.FECHA_CHAVES.equals(actualToken.getType())) 
+                        {
+                            return true;
+                        }
+                        newError("Faltando fechamento das chaves");
+                        return false;
+                    }
                 }
                 newError("Faltando abertura de chaves");
                 return false;
@@ -37,6 +47,33 @@ public class Parser
         }
         newError("Faltando declaração de classe");
         return false;
+    }
+
+    private Boolean deepMainAnalize(List<Token> tokenList)
+    {
+        for (Type type : mainTypesToVerify) {
+            Boolean isEqual = type.equals(actualToken.getType());
+            if(isEqual)
+            {
+                if(Type.IDENTIFICADOR.equals(actualToken.getType()))
+                {
+                    insertIdentifierInSymbolTable("args");
+                }
+                setNextToken(tokenList);
+            }
+            else
+            {
+                newError("Erro na mainClass");
+                return false;
+            }
+        }   
+        return true;
+    }
+
+    private void insertIdentifierInSymbolTable(String tipagem) 
+    {
+        actualToken.setTipagem(tipagem);
+        symbolTable.getFullTable().put(actualToken.getPalavra(), actualToken);        
     }
 
     private void setNextToken(List<Token> tokenList)
@@ -56,7 +93,7 @@ public class Parser
     {
             actualToken.setTipagem(tipagem);
             symbolTable
-                .getTabela()
+                .getFullTable()
                 .put(actualToken.getPalavra(), actualToken);        
     }
 }

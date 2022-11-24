@@ -25,7 +25,7 @@ public class SymbolTable
         return (String) field.get(token);
     }
 
-    public Map<String, Token> getTabela() 
+    public Map<String, Token> getFullTable() 
     {
         return table;
     }
