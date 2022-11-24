@@ -29,4 +29,8 @@ public class SymbolTable
     {
         return table;
     }
+    public Boolean IsInTable(String value)
+    {
+        return table.get(value) != null;
+    }
 }
