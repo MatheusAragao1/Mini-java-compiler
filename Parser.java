@@ -38,6 +38,7 @@ public class Parser
                         newError("Faltando fechamento das chaves");
                         return false;
                     }
+                    return false;
                 }
                 newError("Faltando abertura de chaves");
                 return false;
