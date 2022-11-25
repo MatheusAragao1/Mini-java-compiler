@@ -65,7 +65,6 @@ public class Parser
                         {
                             return true;
                         }
-                        newError("Faltando fechamento das chaves");
                         return false;
                     }
                     return false;
@@ -82,7 +81,8 @@ public class Parser
 
     private Boolean deepMainAnalize(List<Token> tokenList)
     {
-        for (Type type : mainTypesToVerify) {
+        for (Type type : mainTypesToVerify) 
+        {
             Boolean isEqual = type.equals(actualToken.getType());
             if(isEqual)
             {
@@ -107,7 +107,6 @@ public class Parser
             }
             else
             {
-                newError("Erro na mainClass");
                 return false;
             }
         }   
@@ -127,14 +126,73 @@ public class Parser
         else if (Type.IDENTIFICADOR.equals(actualToken.getType()) || Type.NUMERO.equals(actualToken.getType()) ) 
         {
             return analizeIdentifierOrNumber(tokenList);
-        } 
+        }
+        else if (Type.IF.equals(actualToken.getType()) || Type.WHILE.equals(actualToken.getType()))
+        {
+            setNextToken(tokenList);
+            return analizeCommands(tokenList);
+        }
         else if (isEndOfBlock()) 
         {
             setNextToken(tokenList);
-            return isEndOfBlock();
+            return isEndOfBlock() ? true : deepScopeAnalize(tokenList);
         }
-
         newError("Bloco invalido");
+        return false;
+    }
+
+    private Boolean analizeCommands(List<Token> tokenList)
+    {
+        if(Type.ABRE_PARENTESIS.equals(actualToken.getType()))
+        {
+            setNextToken(tokenList);
+            if(analizeExpression(tokenList))
+            {
+                if(Type.ABRE_CHAVES.equals(actualToken.getType()))
+                {
+                    setNextToken(tokenList);
+                    return deepScopeAnalize(tokenList);
+                }
+                newError("Erro ao abrir chaves");
+                return false;
+            }
+            return false;
+        }
+        newError("Falta abre parentesis");
+        return false;
+    }
+
+    private Boolean analizeExpression(List<Token> tokenList)
+    {
+        if(IsDeclaredIdentifierOrNumber())
+        {
+            setNextToken(tokenList);
+            if(Type.IGUAL.equals(actualToken.getType()) || Type.MENOR.equals(actualToken.getType()) || Type.DIFERENTE.equals(actualToken.getType()))
+            {
+                setNextToken(tokenList);
+                if(IsDeclaredIdentifierOrNumber())
+                {
+                    setNextToken(tokenList);
+                    if(Type.FECHA_PARENTESIS.equals(actualToken.getType()))
+                    {
+                        setNextToken(tokenList);
+                        return true;
+                    }
+                    else if(Type.AND.equals(actualToken.getType()))
+                    {
+                        setNextToken(tokenList);
+                        return analizeExpression(tokenList);
+                    }
+                    newError("Operação com valor inválido faltou And ou fim de expressão");
+                    return false;
+                }
+                newError("Operação com valor inválido");
+                return false;
+            }
+            newError("Operação ilegal na expressão");
+            return false;
+        }
+        newError("Expressão inválida");
         return false;
     }
 
