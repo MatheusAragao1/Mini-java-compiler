@@ -4,7 +4,7 @@ public class Main
   public static void main(String[] args) {
     try 
     {
-      String fileName = "test.java";
+      String fileName = "semErros.java";
       Scanner scan = new Scanner();
       List<Token> tokenList = scan.analize(fileName);
       for (int i = 0; i < tokenList.size(); i++)
